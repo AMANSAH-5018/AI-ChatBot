@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Voice Query</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: #f4f4f4;
+      }
+
+      .container {
+        max-width: 600px;
+        width: 100%;
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .input-group {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      input[type="text"] {
+        flex: 1;
+        padding: 10px;
+        font-size: 16px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+
+      button {
+        padding: 10px;
+        font-size: 16px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      .response {
+        margin-top: 20px;
+        padding: 10px;
+        background-color: #e9ecef;
+        border-radius: 4px;
+        white-space: pre-wrap;
+      }
+
+      .mic-button {
+        background-color: #28a745;
+      }
+
+      .mic-button.listening {
+        background-color: #dc3545;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Ask the AI</h1>
+      <div class="input-group">
+        <input
+          type="text"
+          id="queryInput"
+          placeholder="Type or speak your question..."
+        />
+        <button class="mic-button" id="micBtn" onclick="startListening()">
+          🎤
+        </button>
+      </div>
+      <button onclick="handleQuery()">Submit</button>
+      <div id="responseOutput" class="response"></div>
+    </div>
+
+    <script>
+      const link = "https://ai-chatbot-iq54.onrender.com/api";
+      const micBtn = document.getElementById("micBtn");
+      let recognition;
+
+      async function aicall(query) {
+        try {
+          const response = await fetch(link, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ query: query }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          return data.output;
+        } catch (error) {
+          console.error("Error calling API:", error);
+          return "Error fetching response.";
+        }
+      }
+
+      async function handleQuery() {
+        const input = document.getElementById("queryInput").value;
+        const outputDiv = document.getElementById("responseOutput");
+        outputDiv.textContent = "Loading...";
+        const response = await aicall(input);
+        outputDiv.textContent = response;
+        speakText(response); // 🔊 Speak the response
+      }
+
+      function startListening() {
+        if (
+          !(
+            "webkitSpeechRecognition" in window || "SpeechRecognition" in window
+          )
+        ) {
+          alert("Speech recognition not supported in this browser.");
+          return;
+        }
+
+        const SpeechRecognition =
+          window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.lang = "en-IN";
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        micBtn.classList.add("listening");
+        micBtn.textContent = "🔴";
+
+        recognition.start();
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          document.getElementById("queryInput").value = transcript;
+          micBtn.classList.remove("listening");
+          micBtn.textContent = "🎤";
+        };
+
+        recognition.onerror = (event) => {
+          console.error("Speech recognition error:", event.error);
+          micBtn.classList.remove("listening");
+          micBtn.textContent = "🎤";
+        };
+
+        recognition.onend = () => {
+          micBtn.classList.remove("listening");
+          micBtn.textContent = "🎤";
+        };
+      }
+
+      function speakText(text) {
+        if (!window.speechSynthesis) {
+          console.warn("SpeechSynthesis not supported.");
+          return;
+        }
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "en-IN";
+        utterance.rate = 1;
+        utterance.pitch = 1;
+        speechSynthesis.speak(utterance);
+      }
+    </script>
+  </body>
+</html>
